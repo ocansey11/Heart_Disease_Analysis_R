@@ -1,0 +1,430 @@
+---
+title: "Heart_Disease_Analysis"
+author: "Ocansey Djabaku Kevin"
+date: '2022-08-12'
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 76
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+set.seed(101)
+
+library(tidyverse)
+library(dplyr)
+library(dslabs)
+library(caret)
+library(purrr)
+```
+
+## Reading heart.csv
+
+```{r heart}
+heart <- read.csv(file.choose(), header=TRUE)
+
+# age
+# sex
+# cp = chest pain type (4 values)
+# trestbps = resting blood pressure measured in mm Hg on admission to the hospital.
+# chol = serum cholestoral in mg/dl  
+# fbs = fasting blood sugar > 120 mg/dl
+# restecg = resting electrocardiographic results (values 0= normal,1 = having ST-T wave abnormality, 2 = showing probable or definite left ventricular hypertropy by Estes )  
+# thalach = maximum heart rate achieved
+# exang = exercise induced angina
+# oldpeak = ST depression induced by exercise relative to rest
+# slope = the slope of the peak exercise ST segment; 1 = upslopping 2 = flat 3 = downslopping 
+# ca = number of major vessels (0-3) colored by flourosopy
+# thal: 0 = normal; 1 = fixed defect; 2 = reversible defect
+# target - the predicted attribute - diagnosis of heart disease ( angiographic disease status) value 0 <= 50% diameter narrowing; and value 1  => 50% diameter narrowing 
+# The names and social security numbers of the patients were recently removed from the database, replaced with dummy values.
+```
+
+## CLEANING DATA
+
+```{r Cleaning Data}
+
+#  After close look at each attribute i found discrepancies for two predictors. Ca and Thal.
+# Following the description provided from Kaggle, recurring values, ca-4 and thal-0 were not accounted for.
+# So either the mistake was made dUring the description of the data set or made during the collection.
+
+
+  heart$ca <- factor(heart$ca)
+  heart$thal <-factor(heart$thal)
+
+
+ heart_clean <- heart %>% filter(ca != 4) %>% filter(thal != 0)
+ heart_clean <- heart_clean %>% mutate(ca = droplevels(ca), thal = droplevels(thal))
+ 
+ head(heart_clean)
+```
+
+## REFIXING DATA VARIABLES FOR VISUALIZATION
+
+```{r creating heart2}
+
+# We are going to use this new data frame "heart 2" to do some visualization,
+# hence we need to change the levels of the values into readable characters
+
+
+heart2 <-  heart_clean %>% mutate(sex = if_else(sex == 1, "Male", "Female"),
+                            age = if_else(age <= 64 & age >= 24, "Adult", "Elderly"),
+                  fbs = if_else( fbs == 1, ">120", "<=120"),
+                  exang = if_else(exang ==  1, "Yes", "No"),
+                  cp =if_else(cp == 1, "Typical Angina Pain", 
+                              if_else(cp == 2,  "Atypical Angina Pain", 
+                                     ifelse( cp == 3, "Non-Anginal Pain", "Asymptomatic Pain"))),
+                  restecg = ifelse(restecg == 0, "Normal", if_else(restecg ==  1, "Abnormality", "Probable or definite")),
+                  slope = if_else( slope == 1,"upslopping", if_else(slope == 2, "Flat", "Downslopping")),
+                  ca = as.factor(ca),
+                  thal = if_else( thal == 1, "Fixed defect", if_else(thal == 2, "Normal", "Reversible Defect")),
+                  target = if_else(target == 1,"Yes", "No")) %>% mutate_if(is.character, as.factor) %>% select(target, sex, fbs, exang, cp, restecg, slope, thal, everything())
+
+head(heart2)
+```
+
+## EXPLORATORY DATA ANALYSIS
+
+```{r EXPLORATORY DATA}
+
+head(heart_clean)
+summary(heart2)
+
+```
+
+## DATA VISUALIZATION
+
+```{r heart2}
+heart2 %>% ggplot(aes(target , fill = target)) + 
+  geom_bar() + 
+  xlab("Heart Disease") + 
+  ggtitle("Presence Of Heart Disease") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Heart disease analysis with Sex attribute
+
+```{r heart2}
+# Heart disease Grouped by Sex 2
+heart2 %>% filter(target == "Yes") %>%  group_by(sex) %>% count() %>%
+  ggplot(aes(sex, n, fill = sex)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Sex") +
+  xlab("Sex") + ylab("count") 
+
+
+# Check to see if Males are prevalent in our data.
+prop.table(table(heart2$sex))
+# There are 2 times more Males than females in the dataset. something to keep in mind 
+```
+
+```{r heart2}
+# Looking at the graph above we cannot make a general statement that Males are more likely to suffer from heart diseases,
+# because from the data there is prevalence of Males
+# Hence we can check the proportion of Heart disease for each gender
+prop.table(table(heart2$sex, heart2$target))
+
+# We can represent or findings in a graph like so
+heart2 %>% group_by(sex, target) %>% count() %>%
+  ggplot(aes(sex, n, fill = target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Sex") +
+  xlab("Sex") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+
+# We notice although there are more men with heart Disease in the data set generally. it seems Females have a higher concentration of heart disease.
+```
+
+### Sex and Age
+
+```{r heart2}
+heart2 %>% group_by(sex, age, target) %>% count() %>%
+  ggplot(aes(sex, n, fill = target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Sex") +
+  xlab("Sex") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present")) + facet_wrap(~age)
+
+# This graph shows Heart Disease are prevalent in females across our various ages as well.
+```
+
+### Heart disease analysis with Chol
+
+```{r Cholesterol}
+# Comparing the correlation between cholesterol levels and heart disease 
+heart2 %>% group_by(chol,target) %>% count() %>%  ggplot(aes(chol,n)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis by Chol") +
+  xlab("Cholesterol") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present")) + facet_wrap(~target)
+
+# Zooming on the cholesterol levels between 200 and 300.
+heart2 %>% filter(chol > 200 & chol < 300) %>% group_by(chol,target) %>% count() %>%  ggplot(aes(chol,n)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Cholesterol") +
+  xlab("Cholesterol") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present")) + facet_wrap(~target)
+
+heart2 %>% filter(chol > 200 & chol < 300) %>% group_by(target) %>% summarize(n())
+```
+
+### Fast Blood Sugar
+
+```{r Fast Blood Sugar}
+
+heart2 %>% group_by(fbs,target) %>% count() %>%  ggplot(aes(fbs,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Fasting Blood Sugar") +
+  xlab("FBS") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present")) 
+```
+
+### Chest Pain
+
+```{r # Chest Pain}
+heart2 %>% group_by(cp,target) %>% count() %>%  ggplot(aes(cp,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Chest Pain") +
+  xlab("Chest Pain") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))    
+```
+
+### Ca
+
+```{r Ca }
+
+heart2 %>% group_by(ca,target) %>% count() %>%  ggplot(aes(ca,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with CA") +
+  xlab("CA") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Thal
+
+```{r Thal}
+heart2 %>% group_by(thal,target) %>% count() %>%  ggplot(aes(thal,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Thal") +
+  xlab("THAL") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Thalach
+
+```{r Thalach}
+heart2 %>% group_by(thalach,target) %>% count() %>%  ggplot(aes(thalach,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Thalach") +
+  xlab("THALACH") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+
+```
+
+### Trestbps
+
+```{r Trestbps}
+heart2 %>% group_by(trestbps,target) %>% count() %>%  ggplot(aes(trestbps,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Trestbps") +
+  xlab("Trestbps") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Slope
+
+```{r Slope}
+heart2 %>% group_by(slope,target) %>% count() %>%  ggplot(aes(slope,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Slope") +
+  xlab("Slope") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Oldpeak
+
+```{r Oldpeak }
+heart2 %>% group_by(oldpeak,target) %>% count() %>%  ggplot(aes(oldpeak,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with OldPeak") +
+  xlab("Oldpeak") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Exang
+
+```{r Exang}
+heart2 %>% group_by(exang,target) %>% count() %>%  ggplot(aes(exang,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Exang") +
+  xlab("Exang") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+### Restecg
+
+```{r Restecg}
+heart2 %>% group_by(restecg,target) %>% count() %>%  ggplot(aes(restecg,n, fill= target)) +
+  geom_col()  +
+  ggtitle("Heart Disease Analysis with Restecg") +
+  xlab("Restecg") + ylab("count") +
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))
+```
+
+# MACHINE LEARNING
+
+### Fix the variable types (making sure they are factors)
+
+```{r Fix}
+heart_clean$sex <-factor(heart_clean$sex)
+heart_clean$cp<- factor(heart_clean$cp)
+heart_clean$fbs <- factor(heart_clean$fbs)
+heart_clean$restecg <- factor(heart_clean$restecg)
+heart_clean$exang <- factor(heart_clean$exang)
+heart_clean$slope <- factor(heart_clean$slope)
+heart_clean$ca <- factor(heart_clean$ca)
+heart_clean$thal <-factor(heart_clean$thal)
+heart_clean$target <- factor(heart_clean$target)
+```
+
+### Split the Data
+
+```{r Data Partitioning}
+set.seed(101)
+y <- heart_clean$target
+test_index <- createDataPartition(y,times = 1, p = 0.8, list = FALSE)
+
+train_set <- heart_clean[test_index,]
+test_set <- heart_clean[-test_index,]
+```
+
+### Simple model based on sex
+
+```{r Simple Model train}
+prop.table(table(heart2$sex, heart2$target))  
+# 86 females do not have heart disease. whiles 223 females out of a total 319 do. 
+# that means, according to our dataset 73 out of 100 Females are likely to have heart disease. 
+# Only 41 percent of the males have heart disease.
+
+#  Considering this Lets try a simple model where we predict if a patient has heart disease based on their sex
+# target is mutated to be 1 if  sex = 0  which is Female in our dataset.
+# We chose Females because according to our proportion  males are less likely to have heart diseases.
+
+y_hat_sex <- factor(ifelse(heart_clean$sex == 0, 1, 0))
+confusionMatrix(y_hat_sex, heart_clean$target)$overall["Accuracy"]
+# We get an accuracy of 0.629. Not bad, but we applied the model still using the main data set. 
+```
+
+```{r Simple Model test}
+# Applying this Model on the Test set
+y_hat_sex_test <- factor(ifelse(test_set$sex == 0, 1, 0))
+confusionMatrix(y_hat_sex_test, test_set$target)$overall["Accuracy"]
+# we get an accuracy of 0.587  
+```
+
+### USING GLM
+
+```{r}
+# considering conditional probabilities we want to determine the best p value for improving our accuracy
+set.seed(101)
+ps <- seq(0.3, 0.7, 0.1)
+
+accuracy_general <- map_df(ps, function(p){
+  
+fit <- glm(target ~ exang + trestbps + chol + age + sex + thal + restecg + cp + fbs + ca + oldpeak + slope + thalach, data = train_set, family = binomial)
+p_hat <- predict(fit, test_set, type = "response")
+y_hat <-  factor(ifelse(p_hat > p, 1, 0))
+cm <- confusionMatrix(y_hat, as.factor(test_set$target))
+acc <- cm$overall["Accuracy"]
+
+f_meas <- F_meas(y_hat, test_set$target)
+cm_sensitivity <- sensitivity(y_hat, test_set$target)
+cm_specificity <- specificity(y_hat, test_set$target)
+
+
+tibble( acc, f_meas, cm_sensitivity, cm_specificity)
+})  
+ 
+accuracy_results <- cbind( ps, accuracy_general)
+accuracy_results
+# You can decide which p value cutoff to use. depending on F meas and cm sensitivity 0.6 seems to be the best.
+```
+
+### IMPROVING ON OUR PREVIOUS MODEL USING K-FOLD CROSS VALIDATION
+
+```{r Glm and K-cross Validation}
+set.seed(101)
+  train_control  <- trainControl(method = 'cv', number = 10)
+  
+  #after a couple permutations the final attributes/predictors to be used for this model were tracked using varImp()
+  
+  model_glm <- train(target ~  thal +  cp  + exang + trestbps +  sex + chol + ca + thal + oldpeak +slope+ thalach, data = train_set, family = binomial, method = "glm", trControl = train_control)
+  y_hat_glm <- predict(model_glm, test_set)
+  cm_glm <-  confusionMatrix(y_hat_glm,test_set$target)
+  cm_glm$overall["Accuracy"]
+  F_meas(y_hat_glm,test_set$target)
+
+  im_glm <- varImp(model_glm)
+  im_glm
+  
+  #  We get an accuracy of 0.8542714 and an F_meas of  0.8465608
+```
+
+### USING KNN
+
+```{r knn}
+
+  set.seed(101)
+  #after a couple permutations the final attributes/predictors to be used for this model were tracked using varImp(model_knn)
+  
+  model_knn <- train(target ~  oldpeak + thalach + ca + thal , data = train_set,  method = "knn", trControl = train_control)
+  y_hat_knn <- predict(model_knn, test_set)
+  cm_knn <-  confusionMatrix(y_hat_knn,test_set$target)
+  cm_knn$overall["Accuracy"]
+
+  im_knn <- varImp(model_knn)
+  im_knn  
+  # i noticed thal has a varImp of 0, however if we remove the predictor the total accuracy drops.
+
+
+
+
+```
+
+### CLASSIFICATION TREEE
+
+```{r Classification Tree}
+  library(rpart)
+  set.seed(101)
+  
+  #after a couple permutations the final attributes/predictors to be used for this model were tracked using     varImp(tree_model)
+  tree_model <- rpart(target ~  exang + thal +  cp  + ca + oldpeak +  thalach, data = train_set, method = "class")
+  varImp(tree_model)
+  
+  plotcp(tree_model)
+  plot(tree_model, uniform=TRUE,
+       main="Classification Tree for Heart Disease")
+  text(tree_model, use.n = TRUE, all=TRUE, cex=.75)
+  
+  y_hat_tree <- predict(tree_model, test_set, type = 'class')
+  cm_tree <- confusionMatrix(y_hat_tree, test_set$target)
+```
+
+### RANDOM FOREST
+
+```{r Random Forest}
+  library(randomForest)
+  set.seed(101)
+  model_forest <- randomForest(target ~ exang + trestbps + chol + age + sex + thal + restecg + cp + fbs + 
+                           ca + oldpeak + slope + thalach, data = train_set, ntree = 50)
+  y_hat_forest <- predict(model_forest, test_set, type = 'class')
+  cm_forest <- confusionMatrix(y_hat_forest, test_set$target)
+  cm_forest
+  varImp(model_forest)
+  
+  # We get a high accuracy between 0.98 and 1
+```
