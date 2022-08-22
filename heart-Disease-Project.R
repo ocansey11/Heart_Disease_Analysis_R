@@ -1,9 +1,10 @@
 
 
-library(knitr)
-knitr::spin()
+# UNCOMMENT THE CODE BELOW TO READ THE FILE.  IF YOU HAVE ALREADY DOWNLOADED THE HEART.CSV FILE UNCOMMENT THE SECOND ONE.
+# heart <- read.csv("https://github.com/ocansey11/Heart_Disease_Analysis_R/blob/main/heart.csv")
+# heart <- read.csv(file.choose(), header=TRUE)
 
-heart <- read.csv(file.choose(), header=TRUE)
+
 # age
 # sex
 # cp = chest pain type (4 values)
@@ -29,6 +30,8 @@ summary(heart)
 # Following the description provided from Kaggle, recurring values, ca-4 and thal-0 were not accounted for.
 # So either the mistake was made dring the description of the data set or made during the collection.
 
+
+# Cleaning the data 
 sum(heart$ca == 4 ) + sum(heart$thal == 0)
 # The errors in our data set sum up to 25. we can carry on without them
 
@@ -47,6 +50,8 @@ heart %>% group_by(target) %>% ggplot(aes(thal, fill = target )) + geom_bar()
  heart_clean$ca
  heart_clean$thal
 
+ 
+ 
 set.seed(101)
 
 library(tidyverse)
@@ -171,11 +176,11 @@ heart2 %>% group_by(fbs,target) %>% count() %>%  ggplot(aes(fbs,n, fill= target)
 
 
 # CHEST PAIN
-heart2 %>% group_by(cp,target) %>% count() %>%  ggplot(aes(cp,n, fill= target)) +
+heart2 %>% group_by(cp,target,sex) %>% count() %>%  ggplot(aes(cp,n, fill= target)) +
   geom_col()  +
   ggtitle("Heart Disease Analysis with Chest Pain") +
   xlab("Chest Pain") + ylab("count") +
-  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present"))     
+  scale_fill_discrete(name = "Heart Disease", labels = c("Absent", "Present")) + facet_wrap(~sex )      
 
 
 
