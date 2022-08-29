@@ -9,7 +9,7 @@ if(!require(purrr)) install.packages("purr", repos = "http://cran.us.r-project.o
 
 
 heart <- read.csv("https://github.com/ocansey11/Heart_Disease_Analysis_R/blob/main/heart.csv")
-heart <- read.csv(file.choose(), header=TRUE)
+# heart <- read.csv(file.choose(), header=TRUE)
 
 
 # age
