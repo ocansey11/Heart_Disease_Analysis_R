@@ -1,8 +1,15 @@
 
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(dslabs)) install.packages("dslabs", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(purrr)) install.packages("purr", repos = "http://cran.us.r-project.org")
 
-# UNCOMMENT THE CODE BELOW TO READ THE FILE.  IF YOU HAVE ALREADY DOWNLOADED THE HEART.CSV FILE UNCOMMENT THE SECOND ONE.
-# heart <- read.csv("https://github.com/ocansey11/Heart_Disease_Analysis_R/blob/main/heart.csv")
-# heart <- read.csv(file.choose(), header=TRUE)
+
+
+heart <- read.csv("https://github.com/ocansey11/Heart_Disease_Analysis_R/blob/main/heart.csv")
+heart <- read.csv(file.choose(), header=TRUE)
 
 
 # age

@@ -13,6 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r libraries}
+
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(dslabs)) install.packages("dslabs", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(purrr)) install.packages("purr", repos = "http://cran.us.r-project.org")
+
+
 set.seed(101)
 
 library(tidyverse)
